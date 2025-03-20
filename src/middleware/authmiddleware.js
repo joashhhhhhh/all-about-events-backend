@@ -1,24 +1,23 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/user");
 
-module.exports = async (req, res, next) => {
-    const token = req.header("Authorization")?.split(" ")[1];
+const authMiddleware = (req, res, next) => {
+  const token = req.header("Authorization");
+  if (!token) return res.status(401).json({ message: "Access Denied" });
 
-    if (!token) {
-        return res.status(401).json({ msg: "No token, authorization denied" });
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
-
-        if (!req.user) {
-            return res.status(404).json({ msg: "User not found" });
-        }
-
-        next();
-    } catch (error) {
-        console.error(error);  
-        res.status(401).json({ msg: "Invalid token" });
-    }
+  try {
+    const verified = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = verified;
+    next();
+  } catch (err) {
+    res.status(400).json({ message: "Invalid Token" });
+  }
 };
+
+const checkRole = (roles) => (req, res, next) => {
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+  }
+  next();
+};
+
+module.exports = { authMiddleware, checkRole };
